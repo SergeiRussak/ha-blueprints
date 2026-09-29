@@ -6,6 +6,13 @@
 
 `blueprints/automation/ikea/bilresa_scrollwheel_last_target.yaml`
 
+Также доступен экспериментальный вариант с умным выбором цели:
+
+`blueprints/automation/ikea/bilresa_scrollwheel_smart_select.yaml`
+
+В нём нажатие по другой уже включённой цели только выбирает её для колёсика;
+повторное нажатие по уже выбранной цели переключает её.
+
 Он использует автоматическое сопоставление событий BILRESA:
 
 | Канал | Ярче | Темнее | Кнопка |

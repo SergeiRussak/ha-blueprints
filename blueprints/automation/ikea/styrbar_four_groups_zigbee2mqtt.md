@@ -38,9 +38,9 @@ Settings → Devices & services → Helpers.
 
 ## Настройка automation
 
-В blueprint добавьте device triggers пульта STYRBAR через trigger selector,
-затем выберите два helper’а и четыре набора сущностей. В trigger selector можно
-добавить несколько action-триггеров, по одному для каждой нужной кнопки.
+В blueprint выберите само MQTT-устройство STYRBAR, например `mega-button-2`.
+Отдельно добавлять action-триггеры не нужно: blueprint сам подключает все
+восемь нужных действий.
 Для каждой группы можно выбрать любое сочетание `light.*` и `switch.*`.
 
 Этот вариант не требует action-сенсора, ручного ввода MQTT topic или включения

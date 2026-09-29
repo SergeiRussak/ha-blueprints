@@ -9,18 +9,18 @@ blueprint:
     Розетки участвуют в переключении, но пропускаются при изменении яркости.
   domain: automation
   homeassistant:
-    min_version: 2024.10.0
+    min_version: 2024.4.0
 
   input:
-    remote_triggers:
-      name: Триггеры STYRBAR
+    remote_device:
+      name: Пульт STYRBAR — MQTT device
       description: >-
-        Добавьте device triggers пульта STYRBAR из Zigbee2MQTT. Выберите
-        action для каждой нужной кнопки: on, off, arrow_left_click,
-        arrow_right_click, brightness_move_up, brightness_move_down,
-        arrow_left_hold и arrow_right_hold.
+        Выберите само MQTT-устройство пульта STYRBAR, например mega-button-2.
+        Отдельно добавлять action-триггеры не нужно.
       selector:
-        trigger:
+        device:
+          filter:
+            - integration: mqtt
 
     active_group_helper:
       name: Helper активной группы
@@ -134,21 +134,73 @@ variables:
     right: [arrow_right_hold]
 
 triggers:
-  - triggers: !input remote_triggers
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: on
+    id: up_short
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: off
+    id: down_short
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: arrow_left_click
+    id: left_short
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: arrow_right_click
+    id: right_short
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: brightness_move_up
+    id: up_hold
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: brightness_move_down
+    id: down_hold
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: arrow_left_hold
+    id: left_hold
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote_device
+    type: action
+    subtype: arrow_right_hold
+    id: right_hold
 
 conditions:
   - condition: template
-    value_template: >-
-      {{ trigger.subtype is defined
-         and trigger.subtype in [
-           'on', 'off', 'brightness_move_up', 'brightness_move_down',
-           'arrow_left_click', 'arrow_right_click',
-           'arrow_left_hold', 'arrow_right_hold'
-         ] }}
+    value_template: "{{ trigger.id is defined }}"
 
 actions:
   - variables:
-      command: "{{ trigger.subtype }}"
+      command: >-
+        {%- set commands = {
+          'up_short': 'on',
+          'down_short': 'off',
+          'left_short': 'arrow_left_click',
+          'right_short': 'arrow_right_click',
+          'up_hold': 'brightness_move_up',
+          'down_hold': 'brightness_move_down',
+          'left_hold': 'arrow_left_hold',
+          'right_hold': 'arrow_right_hold'
+        } -%}
+        {{ commands.get(trigger.id, '') | trim }}
 
   - variables:
       button: >-

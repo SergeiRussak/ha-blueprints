@@ -1,0 +1,15 @@
+# Подключите этот файл как package или скопируйте его содержимое
+# в раздел input_text вашего configuration.yaml.
+
+input_text:
+  styrbar_active_group:
+    name: STYRBAR — активная группа
+    icon: mdi:lightbulb-group
+    max: 10
+    initial: none
+
+  styrbar_last_event:
+    name: STYRBAR — последнее событие
+    icon: mdi:remote
+    max: 255
+    initial: '{}'

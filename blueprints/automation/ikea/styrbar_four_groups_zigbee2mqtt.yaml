@@ -1,0 +1,272 @@
+blueprint:
+  name: IKEA STYRBAR Zigbee2MQTT — 4 группы
+  description: >-
+    Управляет четырьмя группами ламп и/или умных розеток через IKEA STYRBAR,
+    подключённый к Zigbee2MQTT. Короткое нажатие переключает группу.
+    Длительное нажатие выбирает группу и включает режим изменения яркости.
+    В режиме яркости короткие нажатия вверх/вниз меняют яркость ламп,
+    а короткие нажатия влево/вправо только выходят из режима.
+    Розетки участвуют в переключении, но пропускаются при изменении яркости.
+  domain: automation
+
+  input:
+    remote:
+      name: Пульт STYRBAR — action entity
+      description: Сенсор action пульта STYRBAR из Zigbee2MQTT.
+      selector:
+        entity:
+          filter:
+            - domain: sensor
+
+    active_group_helper:
+      name: Helper активной группы
+      description: >-
+        input_text, в котором blueprint хранит активную группу.
+        Начальное значение должно быть none.
+      selector:
+        entity:
+          filter:
+            - domain: input_text
+
+    last_event_helper:
+      name: Helper последнего события
+      description: >-
+        input_text для защиты от повторного on после удержания кнопки.
+        Начальное значение должно быть {}.
+      selector:
+        entity:
+          filter:
+            - domain: input_text
+
+    up_targets:
+      name: Группа ▲
+      description: Лампы и/или умные розетки для верхней кнопки.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+            - domain: switch
+
+    down_targets:
+      name: Группа ▼
+      description: Лампы и/или умные розетки для нижней кнопки.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+            - domain: switch
+
+    left_targets:
+      name: Группа ◀
+      description: Лампы и/или умные розетки для левой кнопки.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+            - domain: switch
+
+    right_targets:
+      name: Группа ▶
+      description: Лампы и/или умные розетки для правой кнопки.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+            - domain: switch
+
+    dim_step_pct:
+      name: Шаг изменения яркости
+      description: Изменение яркости при коротком нажатии ▲ или ▼.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    hold_guard_ms:
+      name: Защита после удержания
+      description: >-
+        Время, в течение которого возможное повторное событие on/off после
+        удержания игнорируется.
+      default: 1000
+      selector:
+        number:
+          min: 300
+          max: 3000
+          step: 50
+          unit_of_measurement: ms
+          mode: slider
+
+variables:
+  active_group_helper: !input active_group_helper
+  last_event_helper: !input last_event_helper
+  dim_step: !input dim_step_pct
+  hold_guard_ms: !input hold_guard_ms
+  group_targets:
+    up: !input up_targets
+    down: !input down_targets
+    left: !input left_targets
+    right: !input right_targets
+  short_actions:
+    up: [on]
+    down: [off]
+    left: [arrow_left_click]
+    right: [arrow_right_click]
+  hold_actions:
+    up: [brightness_move_up]
+    down: [brightness_move_down]
+    left: [arrow_left_hold]
+    right: [arrow_right_hold]
+
+triggers:
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: !input remote
+
+conditions:
+  - condition: template
+    value_template: >-
+      {% set old_state = trigger.event.data.old_state %}
+      {% set new_state = trigger.event.data.new_state %}
+      {% set old_action = old_state.attributes.action
+         | default(old_state.state, true) if old_state is not none else none %}
+      {% set new_action = new_state.attributes.action
+         | default(new_state.state, true) if new_state is not none else none %}
+      {{ new_state is not none
+         and new_action not in ['', 'unknown', 'unavailable', none]
+         and new_action != old_action }}
+
+actions:
+  - variables:
+      command: >-
+        {{ trigger.event.data.new_state.attributes.action
+           | default(trigger.event.data.new_state.state, true) }}
+
+  - variables:
+      button: >-
+        {% if command in short_actions.up or command in hold_actions.up %}up
+        {% elif command in short_actions.down or command in hold_actions.down %}down
+        {% elif command in short_actions.left or command in hold_actions.left %}left
+        {% elif command in short_actions.right or command in hold_actions.right %}right
+        {% else %}none{% endif %}
+      active_group: "{{ states(active_group_helper) }}"
+      is_short: "{{ command in short_actions.up or command in short_actions.down or command in short_actions.left or command in short_actions.right }}"
+      is_hold: "{{ command in hold_actions.up or command in hold_actions.down or command in hold_actions.left or command in hold_actions.right }}"
+      previous_action: >-
+        {%- set raw = states(last_event_helper) -%}
+        {%- if raw not in ['', 'unknown', 'unavailable', none] and raw | regex_match('^\\{.*\\}$') -%}
+          {{ (raw | from_json).a | default('', true) | trim }}
+        {%- else -%}
+          {{ '' }}
+        {%- endif -%}
+      previous_time: >-
+        {%- set raw = states(last_event_helper) -%}
+        {%- if raw not in ['', 'unknown', 'unavailable', none] and raw | regex_match('^\\{.*\\}$') -%}
+          {{ (raw | from_json).t | default(0, true) | float(0) }}
+        {%- else -%}
+          0
+        {%- endif -%}
+      previous_age_ms: >-
+        {{ (as_timestamp(now()) - (previous_time | float(0))) * 1000 }}
+
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ is_hold | bool and button != 'none' }}"
+        sequence:
+          - action: input_text.set_value
+            target:
+              entity_id: !input last_event_helper
+            data:
+              value: "{{ {'a': command, 'b': button, 't': as_timestamp(now())} | to_json }}"
+          - action: input_text.set_value
+            target:
+              entity_id: !input active_group_helper
+            data:
+              value: "{{ button }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ is_short | bool and button != 'none' }}"
+        sequence:
+          - action: input_text.set_value
+            target:
+              entity_id: !input last_event_helper
+            data:
+              value: "{{ {'a': command, 'b': button, 't': as_timestamp(now())} | to_json }}"
+
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ previous_action in hold_actions[button]
+                         and (previous_age_ms | float(0)) >= 0
+                         and (previous_age_ms | float(0)) <= (hold_guard_ms | int) }}
+                sequence: []
+
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ active_group in group_targets
+                         and button in ['up', 'down'] }}
+                sequence:
+                  - variables:
+                      active_targets: "{{ group_targets[active_group] }}"
+                      active_lights: >-
+                        {% set ns = namespace(ids=[]) %}
+                        {% for entity_id in active_targets %}
+                          {% if entity_id.startswith('light.') and is_state(entity_id, 'on') %}
+                            {% set ns.ids = ns.ids + [entity_id] %}
+                          {% endif %}
+                        {% endfor %}
+                        {{ ns.ids }}
+                  - if:
+                      - condition: template
+                        value_template: "{{ active_lights | length > 0 }}"
+                    then:
+                      - parallel:
+                          - sequence:
+                              - action: light.turn_on
+                                target:
+                                  entity_id: "{{ active_lights | join(',') }}"
+                                data:
+                                  brightness_step_pct: >-
+                                    {{ dim_step if button == 'up' else -1 * dim_step }}
+
+              - conditions:
+                  - condition: template
+                    value_template: >-
+                      {{ active_group in group_targets
+                         and button in ['left', 'right'] }}
+                sequence:
+                  - action: input_text.set_value
+                    target:
+                      entity_id: !input active_group_helper
+                    data:
+                      value: none
+
+            default:
+              - parallel:
+                  - sequence:
+                      - if:
+                          - condition: template
+                            value_template: "{{ group_targets[button] | length > 0 }}"
+                        then:
+                          - action: homeassistant.toggle
+                            target:
+                              entity_id: "{{ group_targets[button] | join(',') }}"
+
+mode: restart
+max_exceeded: silent

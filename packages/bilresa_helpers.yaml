@@ -1,0 +1,21 @@
+# Подключите этот файл как package или скопируйте его содержимое
+# в раздел input_text вашего configuration.yaml.
+
+input_text:
+  bilresa_channel_1_last:
+    name: BILRESA канал 1 — последний выбор
+    icon: mdi:remote
+    max: 10
+    initial: none
+
+  bilresa_channel_2_last:
+    name: BILRESA канал 2 — последний выбор
+    icon: mdi:remote
+    max: 10
+    initial: none
+
+  bilresa_channel_3_last:
+    name: BILRESA канал 3 — последний выбор
+    icon: mdi:remote
+    max: 10
+    initial: none

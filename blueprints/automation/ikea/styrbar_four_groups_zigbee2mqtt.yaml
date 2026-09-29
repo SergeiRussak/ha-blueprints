@@ -11,12 +11,14 @@ blueprint:
 
   input:
     remote:
-      name: Пульт STYRBAR — action entity
-      description: Сенсор action пульта STYRBAR из Zigbee2MQTT.
+      name: Пульт STYRBAR — MQTT device
+      description: >-
+        Устройство STYRBAR из интеграции MQTT. Выбирайте сам пульт,
+        а не Battery-сенсор.
       selector:
-        entity:
+        device:
           filter:
-            - domain: sensor
+            - integration: mqtt
 
     active_group_helper:
       name: Helper активной группы
@@ -130,29 +132,54 @@ variables:
     right: [arrow_right_hold]
 
 triggers:
-  - trigger: event
-    event_type: state_changed
-    event_data:
-      entity_id: !input remote
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: on
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: off
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: brightness_move_up
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: brightness_move_down
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: arrow_left_click
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: arrow_right_click
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: arrow_left_hold
+  - trigger: device
+    domain: mqtt
+    device_id: !input remote
+    type: action
+    subtype: arrow_right_hold
 
 conditions:
   - condition: template
-    value_template: >-
-      {% set old_state = trigger.event.data.old_state %}
-      {% set new_state = trigger.event.data.new_state %}
-      {% set old_action = old_state.attributes.action
-         | default(old_state.state, true) if old_state is not none else none %}
-      {% set new_action = new_state.attributes.action
-         | default(new_state.state, true) if new_state is not none else none %}
-      {{ new_state is not none
-         and new_action not in ['', 'unknown', 'unavailable', none]
-         and new_action != old_action }}
+    value_template: "{{ trigger.subtype is defined and trigger.subtype != none }}"
 
 actions:
   - variables:
-      command: >-
-        {{ trigger.event.data.new_state.attributes.action
-           | default(trigger.event.data.new_state.state, true) }}
+      command: "{{ trigger.subtype }}"
 
   - variables:
       button: >-

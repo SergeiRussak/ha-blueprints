@@ -121,8 +121,8 @@ variables:
     left: !input left_targets
     right: !input right_targets
   short_actions:
-    up: [on]
-    down: [off]
+    up: ["on"]
+    down: ["off"]
     left: [arrow_left_click]
     right: [arrow_right_click]
   hold_actions:

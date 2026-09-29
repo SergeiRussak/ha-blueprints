@@ -22,7 +22,6 @@ blueprint:
     channel_1_single_targets:
       name: Канал 1 — одинарное нажатие
       description: Лампы и/или умные розетки. Все выбранные цели переключаются одновременно.
-      optional: true
       default: []
       selector:
         entity:
@@ -34,7 +33,6 @@ blueprint:
     channel_1_double_targets:
       name: Канал 1 — двойное нажатие
       description: Лампы и/или умные розетки.
-      optional: true
       default: []
       selector:
         entity:
@@ -46,7 +44,6 @@ blueprint:
     channel_1_triple_targets:
       name: Канал 1 — тройное нажатие
       description: Лампы и/или умные розетки.
-      optional: true
       default: []
       selector:
         entity:
@@ -66,7 +63,6 @@ blueprint:
     channel_2_single_targets:
       name: Канал 2 — одинарное нажатие
       description: Лампы и/или умные розетки. Все выбранные цели переключаются одновременно.
-      optional: true
       default: []
       selector:
         entity:
@@ -78,7 +74,6 @@ blueprint:
     channel_2_double_targets:
       name: Канал 2 — двойное нажатие
       description: Лампы и/или умные розетки.
-      optional: true
       default: []
       selector:
         entity:
@@ -90,7 +85,6 @@ blueprint:
     channel_2_triple_targets:
       name: Канал 2 — тройное нажатие
       description: Лампы и/или умные розетки.
-      optional: true
       default: []
       selector:
         entity:
@@ -110,7 +104,6 @@ blueprint:
     channel_3_single_targets:
       name: Канал 3 — одинарное нажатие
       description: Лампы и/или умные розетки. Все выбранные цели переключаются одновременно.
-      optional: true
       default: []
       selector:
         entity:
@@ -122,7 +115,6 @@ blueprint:
     channel_3_double_targets:
       name: Канал 3 — двойное нажатие
       description: Лампы и/или умные розетки.
-      optional: true
       default: []
       selector:
         entity:
@@ -134,7 +126,6 @@ blueprint:
     channel_3_triple_targets:
       name: Канал 3 — тройное нажатие
       description: Лампы и/или умные розетки.
-      optional: true
       default: []
       selector:
         entity:

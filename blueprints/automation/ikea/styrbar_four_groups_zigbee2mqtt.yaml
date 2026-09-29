@@ -138,13 +138,13 @@ triggers:
     domain: mqtt
     device_id: !input remote_device
     type: action
-    subtype: on
+    subtype: "on"
     id: up_short
   - trigger: device
     domain: mqtt
     device_id: !input remote_device
     type: action
-    subtype: off
+    subtype: "off"
     id: down_short
   - trigger: device
     domain: mqtt

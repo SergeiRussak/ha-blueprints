@@ -8,15 +8,19 @@ blueprint:
     а короткие нажатия влево/вправо только выходят из режима.
     Розетки участвуют в переключении, но пропускаются при изменении яркости.
   domain: automation
+  homeassistant:
+    min_version: 2024.10.0
 
   input:
-    remote:
-      name: MQTT topic пульта STYRBAR
+    remote_triggers:
+      name: Триггеры STYRBAR
       description: >-
-        Полный MQTT topic устройства из Zigbee2MQTT, обычно
-        zigbee2mqtt/<friendly_name>, например zigbee2mqtt/mega-button-2.
+        Добавьте device triggers пульта STYRBAR из Zigbee2MQTT. Выберите
+        action для каждой нужной кнопки: on, off, arrow_left_click,
+        arrow_right_click, brightness_move_up, brightness_move_down,
+        arrow_left_hold и arrow_right_hold.
       selector:
-        text:
+        trigger:
 
     active_group_helper:
       name: Helper активной группы
@@ -130,14 +134,13 @@ variables:
     right: [arrow_right_hold]
 
 triggers:
-  - trigger: mqtt
-    topic: !input remote
+  - triggers: !input remote_triggers
 
 conditions:
   - condition: template
     value_template: >-
-      {{ trigger.payload_json is defined
-         and trigger.payload_json.action | default('', true) in [
+      {{ trigger.subtype is defined
+         and trigger.subtype in [
            'on', 'off', 'brightness_move_up', 'brightness_move_down',
            'arrow_left_click', 'arrow_right_click',
            'arrow_left_hold', 'arrow_right_hold'
@@ -145,7 +148,7 @@ conditions:
 
 actions:
   - variables:
-      command: "{{ trigger.payload_json.action }}"
+      command: "{{ trigger.subtype }}"
 
   - variables:
       button: >-

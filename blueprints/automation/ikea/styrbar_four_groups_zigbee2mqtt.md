@@ -2,7 +2,7 @@
 
 Blueprint: `styrbar_four_groups_zigbee2mqtt.yaml`
 
-Он читает стандартные MQTT-сообщения STYRBAR из Zigbee2MQTT: `on`, `off`,
+Он использует стандартные device triggers STYRBAR из Zigbee2MQTT: `on`, `off`,
 `brightness_move_up`, `brightness_move_down`, `arrow_left_click`,
 `arrow_right_click`, а также `arrow_left_hold` и `arrow_right_hold`.
 
@@ -38,12 +38,12 @@ Settings → Devices & services → Helpers.
 
 ## Настройка automation
 
-В blueprint укажите MQTT topic пульта, два helper’а и четыре набора сущностей.
-Обычно topic имеет вид `zigbee2mqtt/<friendly_name>`, например
-`zigbee2mqtt/mega-button-2`. Для каждой группы можно выбрать любое сочетание
-`light.*` и `switch.*`.
+В blueprint добавьте device triggers пульта STYRBAR через trigger selector,
+затем выберите два helper’а и четыре набора сущностей. В trigger selector можно
+добавить несколько action-триггеров, по одному для каждой нужной кнопки.
+Для каждой группы можно выбрать любое сочетание `light.*` и `switch.*`.
 
-Этот вариант не требует action-сенсора, MQTT device triggers или включения
+Этот вариант не требует action-сенсора, ручного ввода MQTT topic или включения
 deprecated `legacy_action_sensor`.
 
 Параметр «Защита после удержания» нужен для редкого случая, когда после

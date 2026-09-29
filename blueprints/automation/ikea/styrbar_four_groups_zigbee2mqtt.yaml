@@ -11,14 +11,12 @@ blueprint:
 
   input:
     remote:
-      name: Пульт STYRBAR — MQTT device
+      name: MQTT topic пульта STYRBAR
       description: >-
-        Устройство STYRBAR из интеграции MQTT. Выбирайте сам пульт,
-        а не Battery-сенсор.
+        Полный MQTT topic устройства из Zigbee2MQTT, обычно
+        zigbee2mqtt/<friendly_name>, например zigbee2mqtt/mega-button-2.
       selector:
-        device:
-          filter:
-            - integration: mqtt
+        text:
 
     active_group_helper:
       name: Helper активной группы
@@ -132,54 +130,22 @@ variables:
     right: [arrow_right_hold]
 
 triggers:
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: on
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: off
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: brightness_move_up
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: brightness_move_down
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: arrow_left_click
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: arrow_right_click
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: arrow_left_hold
-  - trigger: device
-    domain: mqtt
-    device_id: !input remote
-    type: action
-    subtype: arrow_right_hold
+  - trigger: mqtt
+    topic: !input remote
 
 conditions:
   - condition: template
-    value_template: "{{ trigger.subtype is defined and trigger.subtype != none }}"
+    value_template: >-
+      {{ trigger.payload_json is defined
+         and trigger.payload_json.action | default('', true) in [
+           'on', 'off', 'brightness_move_up', 'brightness_move_down',
+           'arrow_left_click', 'arrow_right_click',
+           'arrow_left_hold', 'arrow_right_hold'
+         ] }}
 
 actions:
   - variables:
-      command: "{{ trigger.subtype }}"
+      command: "{{ trigger.payload_json.action }}"
 
   - variables:
       button: >-

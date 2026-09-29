@@ -185,22 +185,17 @@ triggers:
 
 conditions:
   - condition: template
-    value_template: "{{ trigger.id is defined }}"
+    value_template: >-
+      {{ trigger.payload is defined
+         and trigger.payload | trim in [
+           'on', 'off', 'brightness_move_up', 'brightness_move_down',
+           'arrow_left_click', 'arrow_right_click',
+           'arrow_left_hold', 'arrow_right_hold'
+         ] }}
 
 actions:
   - variables:
-      command: >-
-        {%- set commands = {
-          'up_short': 'on',
-          'down_short': 'off',
-          'left_short': 'arrow_left_click',
-          'right_short': 'arrow_right_click',
-          'up_hold': 'brightness_move_up',
-          'down_hold': 'brightness_move_down',
-          'left_hold': 'arrow_left_hold',
-          'right_hold': 'arrow_right_hold'
-        } -%}
-        {{ commands.get(trigger.id, '') | trim }}
+      command: "{{ trigger.payload | trim }}"
 
   - variables:
       button: >-
@@ -232,7 +227,10 @@ actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ is_hold | bool and button != 'none' }}"
+            value_template: >-
+              {{ (command in hold_actions.up or command in hold_actions.down
+                  or command in hold_actions.left or command in hold_actions.right)
+                 and button != 'none' }}
         sequence:
           - action: input_text.set_value
             target:
@@ -247,7 +245,10 @@ actions:
 
       - conditions:
           - condition: template
-            value_template: "{{ is_short | bool and button != 'none' }}"
+            value_template: >-
+              {{ (command in short_actions.up or command in short_actions.down
+                  or command in short_actions.left or command in short_actions.right)
+                 and button != 'none' }}
         sequence:
           - action: input_text.set_value
             target:

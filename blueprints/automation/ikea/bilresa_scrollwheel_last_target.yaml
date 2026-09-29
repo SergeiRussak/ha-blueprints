@@ -1,0 +1,682 @@
+blueprint:
+  name: IKEA BILRESA Matter — 3 канала, память последней лампы
+  description: >-
+    Управление IKEA BILRESA Scroll Wheel через Matter. Для каждого канала
+    доступны одинарное, двойное и тройное нажатие, длинное нажатие и
+    регулировка яркости колёсиком. Последний тип нажатия запоминается в
+    input_text helper; после этого колёсико регулирует только включённые
+    светильники из выбранного набора. Выключатели/умные розетки работают
+    для toggle и выключения, но игнорируются при регулировке яркости.
+  domain: automation
+
+  input:
+    remote:
+      name: BILRESA пульт
+      description: Выберите пульт IKEA BILRESA Scroll Wheel, подключённый через Matter.
+      selector:
+        device:
+          filter:
+            - manufacturer: IKEA of Sweden
+              integration: matter
+
+    channel_1_single_targets:
+      name: Канал 1 — одинарное нажатие
+      description: Лампы и/или умные розетки. Все выбранные цели переключаются одновременно.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_1_double_targets:
+      name: Канал 1 — двойное нажатие
+      description: Лампы и/или умные розетки.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_1_triple_targets:
+      name: Канал 1 — тройное нажатие
+      description: Лампы и/или умные розетки.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_1_last_helper:
+      name: Канал 1 — helper последнего выбора
+      description: input_text, в котором хранится single, double или triple.
+      selector:
+        entity:
+          filter:
+            domain: input_text
+
+    channel_2_single_targets:
+      name: Канал 2 — одинарное нажатие
+      description: Лампы и/или умные розетки. Все выбранные цели переключаются одновременно.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_2_double_targets:
+      name: Канал 2 — двойное нажатие
+      description: Лампы и/или умные розетки.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_2_triple_targets:
+      name: Канал 2 — тройное нажатие
+      description: Лампы и/или умные розетки.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_2_last_helper:
+      name: Канал 2 — helper последнего выбора
+      description: input_text, в котором хранится single, double или triple.
+      selector:
+        entity:
+          filter:
+            domain: input_text
+
+    channel_3_single_targets:
+      name: Канал 3 — одинарное нажатие
+      description: Лампы и/или умные розетки. Все выбранные цели переключаются одновременно.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_3_double_targets:
+      name: Канал 3 — двойное нажатие
+      description: Лампы и/или умные розетки.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_3_triple_targets:
+      name: Канал 3 — тройное нажатие
+      description: Лампы и/или умные розетки.
+      optional: true
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain:
+              - light
+              - switch
+    channel_3_last_helper:
+      name: Канал 3 — helper последнего выбора
+      description: input_text, в котором хранится single, double или triple.
+      selector:
+        entity:
+          filter:
+            domain: input_text
+
+    dim_step_pct:
+      name: Шаг яркости
+      description: Изменение яркости за один щелчок колёсика.
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 50
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+variables:
+  ch1_single_targets: !input channel_1_single_targets
+  ch1_double_targets: !input channel_1_double_targets
+  ch1_triple_targets: !input channel_1_triple_targets
+  ch1_last_helper: !input channel_1_last_helper
+  ch2_single_targets: !input channel_2_single_targets
+  ch2_double_targets: !input channel_2_double_targets
+  ch2_triple_targets: !input channel_2_triple_targets
+  ch2_last_helper: !input channel_2_last_helper
+  ch3_single_targets: !input channel_3_single_targets
+  ch3_double_targets: !input channel_3_double_targets
+  ch3_triple_targets: !input channel_3_triple_targets
+  ch3_last_helper: !input channel_3_last_helper
+  dim_step: !input dim_step_pct
+
+trigger_variables:
+  remote_device: !input remote
+  button_ch1: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_3.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  scroll_up_ch1: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_1.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  scroll_down_ch1: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_2.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  button_ch2: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_6.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  scroll_up_ch2: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_4.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  scroll_down_ch2: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_5.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  button_ch3: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_9.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  scroll_up_ch3: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_7.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+  scroll_down_ch3: >-
+    {% for item in device_entities(remote_device) %}
+      {% set match = item | regex_findall(find='^event[.].+[a-zA-Z]_8.*$') %}
+      {% if match | length > 0 %}{{ match[0] }}{% endif %}
+    {% endfor %}
+
+triggers:
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ button_ch1 }}"
+    id: button_ch1
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ scroll_up_ch1 }}"
+    id: scroll_up_ch1
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ scroll_down_ch1 }}"
+    id: scroll_down_ch1
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ button_ch2 }}"
+    id: button_ch2
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ scroll_up_ch2 }}"
+    id: scroll_up_ch2
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ scroll_down_ch2 }}"
+    id: scroll_down_ch2
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ button_ch3 }}"
+    id: button_ch3
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ scroll_up_ch3 }}"
+    id: scroll_up_ch3
+  - trigger: event
+    event_type: state_changed
+    event_data:
+      entity_id: "{{ scroll_down_ch3 }}"
+    id: scroll_down_ch3
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.old_state is not none
+         and trigger.event.data.new_state is not none
+         and trigger.event.data.old_state.state != 'unavailable'
+         and trigger.event.data.new_state.state != 'unavailable' }}
+
+actions:
+  - variables:
+      event_type: "{{ trigger.event.data.new_state.attributes.event_type | default('', true) }}"
+      scroll_clicks: >-
+        {{ trigger.event.data.new_state.attributes.totalNumberOfPressesCounted | default(1, true) | int(1) }}
+
+  - choose:
+      # Канал 1: одинарное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch1' and event_type in ['multi_press_1', 'press', 'single_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch1_single_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_1_single_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_1_last_helper
+                data:
+                  value: single
+
+      # Канал 1: двойное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch1' and event_type in ['multi_press_2', 'double_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch1_double_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_1_double_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_1_last_helper
+                data:
+                  value: double
+
+      # Канал 1: тройное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch1' and event_type in ['multi_press_3', 'triple_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch1_triple_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_1_triple_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_1_last_helper
+                data:
+                  value: triple
+
+      # Канал 1: длинное нажатие — выключить все три набора параллельно
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch1' and event_type in ['long_press', 'hold'] }}"
+        sequence:
+          - parallel:
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch1_single_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_1_single_targets
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch1_double_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_1_double_targets
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch1_triple_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_1_triple_targets
+
+      # Канал 2: одинарное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch2' and event_type in ['multi_press_1', 'press', 'single_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch2_single_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_2_single_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_2_last_helper
+                data:
+                  value: single
+
+      # Канал 2: двойное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch2' and event_type in ['multi_press_2', 'double_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch2_double_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_2_double_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_2_last_helper
+                data:
+                  value: double
+
+      # Канал 2: тройное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch2' and event_type in ['multi_press_3', 'triple_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch2_triple_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_2_triple_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_2_last_helper
+                data:
+                  value: triple
+
+      # Канал 2: длинное нажатие — выключить все три набора параллельно
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch2' and event_type in ['long_press', 'hold'] }}"
+        sequence:
+          - parallel:
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch2_single_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_2_single_targets
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch2_double_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_2_double_targets
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch2_triple_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_2_triple_targets
+
+      # Канал 3: одинарное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch3' and event_type in ['multi_press_1', 'press', 'single_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch3_single_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_3_single_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_3_last_helper
+                data:
+                  value: single
+
+      # Канал 3: двойное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch3' and event_type in ['multi_press_2', 'double_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch3_double_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_3_double_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_3_last_helper
+                data:
+                  value: double
+
+      # Канал 3: тройное нажатие
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch3' and event_type in ['multi_press_3', 'triple_press'] }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ ch3_triple_targets | length > 0 }}"
+            then:
+              - action: homeassistant.toggle
+                target:
+                  entity_id: !input channel_3_triple_targets
+              - action: input_text.set_value
+                target:
+                  entity_id: !input channel_3_last_helper
+                data:
+                  value: triple
+
+      # Канал 3: длинное нажатие — выключить все три набора параллельно
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'button_ch3' and event_type in ['long_press', 'hold'] }}"
+        sequence:
+          - parallel:
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch3_single_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_3_single_targets
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch3_double_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_3_double_targets
+              - sequence:
+                  - if:
+                      - condition: template
+                        value_template: "{{ ch3_triple_targets | length > 0 }}"
+                    then:
+                      - action: homeassistant.turn_off
+                        target:
+                          entity_id: !input channel_3_triple_targets
+
+  # Колесо: Button 1/4/7 — ярче; Button 2/5/8 — темнее.
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'scroll_up_ch1' }}"
+        sequence:
+          - repeat:
+              for_each: >-
+                {% if states(ch1_last_helper) == 'single' %}
+                  {{ ch1_single_targets }}
+                {% elif states(ch1_last_helper) == 'double' %}
+                  {{ ch1_double_targets }}
+                {% elif states(ch1_last_helper) == 'triple' %}
+                  {{ ch1_triple_targets }}
+                {% else %}[]{% endif %}
+              sequence:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') and is_state(repeat.item, 'on') }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    brightness_step_pct: "{{ dim_step * scroll_clicks }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'scroll_down_ch1' }}"
+        sequence:
+          - repeat:
+              for_each: >-
+                {% if states(ch1_last_helper) == 'single' %}
+                  {{ ch1_single_targets }}
+                {% elif states(ch1_last_helper) == 'double' %}
+                  {{ ch1_double_targets }}
+                {% elif states(ch1_last_helper) == 'triple' %}
+                  {{ ch1_triple_targets }}
+                {% else %}[]{% endif %}
+              sequence:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') and is_state(repeat.item, 'on') }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    brightness_step_pct: "{{ -1 * dim_step * scroll_clicks }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'scroll_up_ch2' }}"
+        sequence:
+          - repeat:
+              for_each: >-
+                {% if states(ch2_last_helper) == 'single' %}
+                  {{ ch2_single_targets }}
+                {% elif states(ch2_last_helper) == 'double' %}
+                  {{ ch2_double_targets }}
+                {% elif states(ch2_last_helper) == 'triple' %}
+                  {{ ch2_triple_targets }}
+                {% else %}[]{% endif %}
+              sequence:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') and is_state(repeat.item, 'on') }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    brightness_step_pct: "{{ dim_step * scroll_clicks }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'scroll_down_ch2' }}"
+        sequence:
+          - repeat:
+              for_each: >-
+                {% if states(ch2_last_helper) == 'single' %}
+                  {{ ch2_single_targets }}
+                {% elif states(ch2_last_helper) == 'double' %}
+                  {{ ch2_double_targets }}
+                {% elif states(ch2_last_helper) == 'triple' %}
+                  {{ ch2_triple_targets }}
+                {% else %}[]{% endif %}
+              sequence:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') and is_state(repeat.item, 'on') }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    brightness_step_pct: "{{ -1 * dim_step * scroll_clicks }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'scroll_up_ch3' }}"
+        sequence:
+          - repeat:
+              for_each: >-
+                {% if states(ch3_last_helper) == 'single' %}
+                  {{ ch3_single_targets }}
+                {% elif states(ch3_last_helper) == 'double' %}
+                  {{ ch3_double_targets }}
+                {% elif states(ch3_last_helper) == 'triple' %}
+                  {{ ch3_triple_targets }}
+                {% else %}[]{% endif %}
+              sequence:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') and is_state(repeat.item, 'on') }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    brightness_step_pct: "{{ dim_step * scroll_clicks }}"
+
+      - conditions:
+          - condition: template
+            value_template: "{{ trigger.id == 'scroll_down_ch3' }}"
+        sequence:
+          - repeat:
+              for_each: >-
+                {% if states(ch3_last_helper) == 'single' %}
+                  {{ ch3_single_targets }}
+                {% elif states(ch3_last_helper) == 'double' %}
+                  {{ ch3_double_targets }}
+                {% elif states(ch3_last_helper) == 'triple' %}
+                  {{ ch3_triple_targets }}
+                {% else %}[]{% endif %}
+              sequence:
+                - condition: template
+                  value_template: "{{ repeat.item.startswith('light.') and is_state(repeat.item, 'on') }}"
+                - action: light.turn_on
+                  target:
+                    entity_id: "{{ repeat.item }}"
+                  data:
+                    brightness_step_pct: "{{ -1 * dim_step * scroll_clicks }}"
+
+mode: parallel
+max: 30
+max_exceeded: silent

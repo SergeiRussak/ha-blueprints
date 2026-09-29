@@ -122,6 +122,16 @@ variables:
     down: !input down_targets
     left: !input left_targets
     right: !input right_targets
+  short_actions:
+    up: ["on"]
+    down: ["off"]
+    left: [arrow_left_click]
+    right: [arrow_right_click]
+  hold_actions:
+    up: [brightness_move_up]
+    down: [brightness_move_down]
+    left: [arrow_left_hold]
+    right: [arrow_right_hold]
 
 triggers:
   - trigger: device
@@ -175,21 +185,33 @@ triggers:
 
 conditions:
   - condition: template
-    value_template: >-
-      {{ trigger.id in [
-        'up_short', 'down_short', 'left_short', 'right_short',
-        'up_hold', 'down_hold', 'left_hold', 'right_hold'
-      ] }}
+    value_template: "{{ trigger.id is defined }}"
 
 actions:
   - variables:
+      command: >-
+        {%- set commands = {
+          'up_short': 'on',
+          'down_short': 'off',
+          'left_short': 'arrow_left_click',
+          'right_short': 'arrow_right_click',
+          'up_hold': 'brightness_move_up',
+          'down_hold': 'brightness_move_down',
+          'left_hold': 'arrow_left_hold',
+          'right_hold': 'arrow_right_hold'
+        } -%}
+        {{ commands.get(trigger.id, '') | trim }}
+
+  - variables:
       button: >-
-        {% if trigger.id in ['up_short', 'up_hold'] %}up
-        {% elif trigger.id in ['down_short', 'down_hold'] %}down
-        {% elif trigger.id in ['left_short', 'left_hold'] %}left
-        {% elif trigger.id in ['right_short', 'right_hold'] %}right
+        {% if command in short_actions.up or command in hold_actions.up %}up
+        {% elif command in short_actions.down or command in hold_actions.down %}down
+        {% elif command in short_actions.left or command in hold_actions.left %}left
+        {% elif command in short_actions.right or command in hold_actions.right %}right
         {% else %}none{% endif %}
       active_group: "{{ states(active_group_helper) }}"
+      is_short: "{{ command in short_actions.up or command in short_actions.down or command in short_actions.left or command in short_actions.right }}"
+      is_hold: "{{ command in hold_actions.up or command in hold_actions.down or command in hold_actions.left or command in hold_actions.right }}"
       previous_action: >-
         {%- set raw = states(last_event_helper) -%}
         {%- if raw not in ['', 'unknown', 'unavailable', none] and raw | regex_match('^\\{.*\\}$') -%}
@@ -210,14 +232,13 @@ actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: >-
-              {{ trigger.id in ['up_hold', 'down_hold', 'left_hold', 'right_hold'] }}
+            value_template: "{{ is_hold | bool and button != 'none' }}"
         sequence:
           - action: input_text.set_value
             target:
               entity_id: !input last_event_helper
             data:
-              value: "{{ {'a': trigger.id, 'b': button, 't': as_timestamp(now())} | to_json }}"
+              value: "{{ {'a': command, 'b': button, 't': as_timestamp(now())} | to_json }}"
           - action: input_text.set_value
             target:
               entity_id: !input active_group_helper
@@ -226,20 +247,19 @@ actions:
 
       - conditions:
           - condition: template
-            value_template: >-
-              {{ trigger.id in ['up_short', 'down_short', 'left_short', 'right_short'] }}
+            value_template: "{{ is_short | bool and button != 'none' }}"
         sequence:
           - action: input_text.set_value
             target:
               entity_id: !input last_event_helper
             data:
-              value: "{{ {'a': trigger.id, 'b': button, 't': as_timestamp(now())} | to_json }}"
+              value: "{{ {'a': command, 'b': button, 't': as_timestamp(now())} | to_json }}"
 
           - choose:
               - conditions:
                   - condition: template
                     value_template: >-
-                      {{ previous_action == button ~ '_hold'
+                      {{ previous_action in hold_actions[button]
                          and (previous_age_ms | float(0)) >= 0
                          and (previous_age_ms | float(0)) <= (hold_guard_ms | int) }}
                 sequence: []
@@ -271,7 +291,7 @@ actions:
                                   entity_id: "{{ active_lights | join(',') }}"
                                 data:
                                   brightness_step_pct: >-
-                                    {{ dim_step | int if button == 'up' else -1 * (dim_step | int) }}
+                                    {{ dim_step if button == 'up' else -1 * dim_step }}
 
               - conditions:
                   - condition: template
@@ -286,43 +306,15 @@ actions:
                       value: none
 
             default:
-              - choose:
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ trigger.id == 'up_short' }}"
-                    sequence:
-                      - parallel:
-                          - sequence:
-                              - action: homeassistant.toggle
-                                target:
-                                  entity_id: !input up_targets
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ trigger.id == 'down_short' }}"
-                    sequence:
-                      - parallel:
-                          - sequence:
-                              - action: homeassistant.toggle
-                                target:
-                                  entity_id: !input down_targets
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ trigger.id == 'left_short' }}"
-                    sequence:
-                      - parallel:
-                          - sequence:
-                              - action: homeassistant.toggle
-                                target:
-                                  entity_id: !input left_targets
-                  - conditions:
-                      - condition: template
-                        value_template: "{{ trigger.id == 'right_short' }}"
-                    sequence:
-                      - parallel:
-                          - sequence:
-                              - action: homeassistant.toggle
-                                target:
-                                  entity_id: !input right_targets
+              - parallel:
+                  - sequence:
+                      - if:
+                          - condition: template
+                            value_template: "{{ group_targets[button] | length > 0 }}"
+                        then:
+                          - action: homeassistant.toggle
+                            target:
+                              entity_id: "{{ group_targets[button] | join(',') }}"
 
 mode: restart
 max_exceeded: silent
